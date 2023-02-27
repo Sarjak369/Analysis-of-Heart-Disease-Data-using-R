@@ -1,0 +1,684 @@
+
+
+```{r}
+
+
+# Find a dataset that has one dependent qualitative variable with two factors and few qualitative and quantitative variables that are independent. 
+
+# I will be using heart disease data set. The dependent qualitative variable here is target
+# which is of type num. There are 2 values, 0: No disease and 1: Disease. We convert target
+# column into factors of two. 
+
+# This data set dates from 1988 and consists of four databases: Cleveland, Hungary, 
+# Switzerland, and Long Beach V. It contains 76 attributes, including the predicted 
+# attribute, but all published experiments refer to using a subset of 14 of them. 
+# The "target" field refers to the presence of heart disease in the patient. 
+# It is integer valued 0 = no disease and 1 = disease.
+
+
+# Attribute information:
+
+# age
+# sex
+# chest pain type (4 values)
+# resting blood pressure
+# serum cholestoral in mg/dl
+# fasting blood sugar > 120 mg/dl
+# resting electrocardiographic results (values 0,1,2)
+# maximum heart rate achieved
+# exercise induced angina
+# oldpeak = ST depression induced by exercise relative to rest
+# the slope of the peak exercise ST segment
+# number of major vessels (0-3) colored by flourosopy
+# thal: 0 = normal; 1 = fixed defect; 2 = reversable defect
+
+# suppressWarnings({
+
+library(readr)
+heart <- read_csv("/Users/sarju/Desktop/MITA Sem 2/MVA/Homework/Week5/heart.csv")
+heart
+
+colnames(heart)
+str(heart)
+
+# str function says that target column is a num type... so will make it a factor of 2 groups
+heart$target <- as.factor(heart$target)
+str(heart) # now,  target column is a factor
+
+heart$sex <- as.character(heart$sex)
+str(heart)
+
+heart[heart$sex==1, 'sex'] <- "male"
+heart[heart$sex==0, 'sex'] <- "female"
+heart$sex
+
+heart
+
+heart_x = subset(heart, select = c(age, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal))
+heart_x   # heart_x contains all the columns except the target column...
+
+heart_cm <- colMeans(heart_x)
+heart_cm
+
+heart_S <- cov(heart_x)
+heart_S
+
+d <- apply(heart_x, MARGIN = 1, function(heart_x)t(heart_x - heart_cm) %*% solve(heart_S) %*% (heart_x - heart_cm)) # taking the distance... (distance formula)
+d
+
+# chi square plot
+plot(qchisq((1:nrow(heart_x) - 1/2) / nrow(heart_x), df = 3), sort(d),
+     xlab = expression(paste(chi[3]^2, " Quantile")),
+     ylab = "Ordered distances")
+abline(a = 0, b = 1)
+
+# from the chi square plot we can see that the distance of the points from the line -> variance...
+# is closer to the straight line.. some points are deviating and not following the straight line.. 
+# but other points are closer to the straight line...
+
+attach(heart)
+
+# age, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal
+
+# Let's first dive deeper into Visualization Techniques which we learned in Lecture 3.
+
+#Plots
+
+labs.diagonal <- c("age","cp","trestbps","chol","fbs","restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal")
+plot(age, chol,xlab="age",ylab="serum cholestoral in mg/dl",pch=c(16,1))
+
+# Correlations
+pairs(heart_x)
+
+# 3 Dimensional Plots
+library(scatterplot3d)
+s3d <- scatterplot3d(age,chol,cp,pch=c(1,16)[as.factor(target)],xlab="age", ylab="cholestrol", angle=45,zlab="chest pain", lty.hide=2,type="h",y.margin.add=0.1,font.axis=2,font.lab=2)
+legend(s3d$xyz.convert(238, 160, 34.1),c("Disease","No disease"),pch=c(1,16),text.font=2)
+
+# Scatter Plot Matrix
+library(car)
+
+suppressWarnings(
+scatterplotMatrix(~age+chol+cp+trestbps+fbs+restecg+thalach+exang+oldpeak+slope+ca+thal | target, data=heart_x, var.labels=labs.diagonal,cex.labels=0.7, diagonal="boxplot",smooth=FALSE,reg.line=FALSE,pch=c(1,16),col=rep("black",2), legend.plot=FALSE)
+)
+
+library(lattice)
+super.sym <- trellis.par.get("superpose.symbol")
+super.sym$superpose.symbol$pch <- c(1,16,rep(1,5))
+super.sym$superpose.symbol$col <- rep("#000000",7)
+trellis.par.set(super.sym)
+splom(~heart_x, groups = target, data = heart_x, ps=0.5, varname.cex = .5,panel = panel.superpose,key = list(columns = 2,points = list(pch = super.sym$pch[1:2], col=super.sym$col[1:2]),text = list(c("No Disease", "Disease"))))
+
+library(GGally)
+ggscatmat(heart, color="target")
+
+# load packages
+library(lattice)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+
+plot(age~chol)
+plot(age~cp)
+
+abline(lm(age~chol), col="red")
+abline(lm(age~cp), col="red")
+abline(lm(age~trestbps), col="red")
+abline(lm(age~exang), col="red")
+
+plot(age~cp, col="steelblue", pch=3, main="Heart Disease Data", xlab="age", 
+     ylab="cholestrol", xlim=c(0,3))
+xyplot(age~chol)
+xyplot(age~chol | target)
+xyplot(age~chol, groups=target)
+xyplot(age~chol | target + fbs)
+
+
+# ggplot
+ggplot(heart, aes(x=age,y=chol)) + geom_point()
+ggplot(heart, aes(x=age,y=cp)) + geom_point()
+ggplot(heart, aes(x=age,y=fbs)) + geom_point()
+
+ggplot(heart, aes(x=age,y=chol)) + facet_wrap(target) + geom_point()
+ggplot(heart, aes(x=age,y=cp)) + facet_wrap(target) + geom_point()
+
+ggplot(heart, aes(x=age, y=chol)) + geom_point(aes(color=target))
+ggplot(heart, aes(x=age, y=cp)) + geom_point(aes(color=target))
+
+# bar chart
+ggplot(heart, aes(target)) + geom_bar(position="stack") 
+ggplot(heart, aes(target)) + facet_grid(.~fbs) + geom_bar(position="dodge")
+
+# histogram
+ggplot(heart, aes(chol))+geom_histogram()
+ggplot(heart, aes(chol))+geom_histogram(aes(fill = after_stat(count)))
+
+# regression
+ggplot(heart, aes(x=age, y=chol)) + geom_point() + geom_smooth(method=lm)
+ggplot(heart, aes(x=age, y=cp)) + geom_point() + stat_smooth()
+ggplot(heart, aes(x=age, y=thal)) + geom_point() + stat_smooth()
+# we can also plot customized confidence interval bands, but this requires computing them separately [see ggplot2 help]
+
+# violin plot 
+ggplot(heart, aes(x=age, y=chol)) + geom_violin()
+ggplot(heart, aes(x=age, y=cp)) + geom_violin()
+ggplot(heart, aes(x=age, y=thal)) + geom_violin()
+
+# box plot
+ggplot(heart, aes(x=age, y=chol)) + geom_boxplot()
+ggplot(heart, aes(x=age, y=cp)) + geom_boxplot() + coord_flip()
+
+# density plot and ggridges
+ggplot(heart, aes(x=target)) + geom_density() 
+ggplot(heart, aes(x=age, fill=chol, color=target)) + geom_density() 
+
+# hexbin
+ggplot(heart, aes(x=age, y=chol)) + geom_hex() 
+
+
+# Lecture 4
+
+library(Hotelling)
+t2testheart <- hotelling.test(age + cp + trestbps + chol + fbs + restecg + thalach + exang + oldpeak + slope + ca + thal ~ target, data=heart)
+# Output of the function hotelling.test is given
+cat("T2 statistic =",t2testheart$stat[[1]],"\n")
+print(t2testheart)
+
+# Test stat:  953.33 
+# Numerator df:  12 
+# Denominator df:  1012 
+# P-value:  0 
+
+# testing Variation
+# F-test for age 
+var.test(age[target==0],age[target==1])
+
+
+# Levene's tests based on absolute differences around means using t-tests. Standarizing the heart data set with scale()
+
+matstand <- scale(heart_x) # scaling the values to see if that makes a difference
+head(matstand)
+# forming two different columns now.. one with 0 and other with 1
+matnodis <- matstand[target == 0]
+head(matnodis)
+matdis <- matstand[target == 1]
+head(matdis)
+
+# Leverne test is used to verify Homoscedasticity. 
+# It tests if the variance of two samples are # #equal. 
+# Levene's test is an inferential statistic used to assess the equality of 
+# variances for a #variable calculated for two or more groups.[1] 
+# Some common statistical procedures assume that #variances of the populations 
+# from which different samples are drawn are equal. Levene's test #assesses this assumption.
+
+heart$target <- as.factor(heart$target)
+
+library(car)
+leveneTest(cp ~ target, data=heart)
+#leveneTest() produces a two-sided test
+leveneTest(chol ~ target, data=heart)
+leveneTest(fbs ~ target, data=heart)
+
+# ANOVA
+summary(aov(cp ~ target))
+summary(aov(fbs ~ target))
+summary(aov(chol ~ target))
+
+# mahalanobis
+library(stats)
+
+heart_MD <- mahalanobis(heart_x, heart_cm, heart_S)
+head(heart_MD)
+heart$pvalues <- pchisq(heart_MD, df=3, lower.tail=FALSE)
+heart
+
+# BoxM
+library(biotools)
+boxM(heart_x,target)
+
+# Lecture 5
+
+#Get the Correlations between the measurements
+cor(heart_x)
+
+# boxplot
+boxplot(heart_x)
+
+# Using prcomp to compute the principal components (eigenvalues and eigenvectors). With scale=TRUE, variable means are set to zero, and variances set to one
+heart_pca <- prcomp(heart_x,scale=TRUE)
+heart_pca
+summary(heart_pca)
+
+head(heart_pca$x)
+heart_pca$sdev
+heart_pca$rotation
+heart_pca$center
+heart_pca$scale
+# sample scores stored in heart_pca$x
+# singular values (square roots of eigenvalues) stored in heart_pca$sdev
+# loadings (eigenvectors) are stored in heart_pca$rotation
+# variable means stored in heart_pca$center
+# variable standard deviations stored in heart_pca$scale
+# A table containing eigenvalues and %'s accounted, follows
+# Eigenvalues are sdev^2
+
+(eigen_heart <- heart_pca$sdev^2)
+names(eigen_heart) <- paste("PC",1:12,sep="")
+eigen_heart
+sumlambdas <- sum(eigen_heart)
+sumlambdas
+propvar <- eigen_heart/sumlambdas
+propvar
+cumvar_heart <- cumsum(propvar)
+cumvar_heart
+matlambdas <- rbind(eigen_heart,propvar,cumvar_heart)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+summary(heart_pca)
+heart_pca$rotation
+print(heart_pca)
+
+## Sample scores stored in heart_pca$x
+head(heart_pca$x)
+# Identifying the scores by their survival status
+hearttyp_pca <- cbind(data.frame(target),heart_pca$x)
+head(hearttyp_pca)
+
+# Means of scores for all the PC's classified by the status of Disease
+tabmeansPC <- aggregate(hearttyp_pca[,0:13],by=list(target=heart$target),mean)
+# heart$target <- as.factor(heart$target)
+
+
+
+heart[heart$sex=="male", 'sex'] <- "1"
+heart[heart$sex=="female", 'sex'] <- "0"
+heart$sex <- as.numeric(heart$sex)
+heart$sex
+tabmeansPC <- aggregate(hearttyp_pca[,0:13],by=list(target=heart$target),mean)
+tabmeansPC
+tabmeansPC <- tabmeansPC[rev(order(tabmeansPC$target)),]
+tabmeansPC
+tabfmeans <- t(tabmeansPC[,-14])
+tabfmeans
+colnames(tabfmeans) <- t(as.vector(tabmeansPC[1]$target))
+tabfmeans
+
+hearttyp_pca$target <- as.numeric(hearttyp_pca$target)
+str(hearttyp_pca)
+# Standard deviations of scores for all the PC's classified by target status
+tabsdsPC <- aggregate(hearttyp_pca[,0:13],by=list(target=heart$target),sd)
+tabfsds <- t(tabsdsPC[,-14])
+colnames(tabfsds) <- t(as.vector(tabsdsPC[1]$target))
+tabfsds
+t.test(PC1~heart$target,data=hearttyp_pca)
+t.test(PC2~heart$target,data=hearttyp_pca)
+t.test(PC3~heart$target,data=hearttyp_pca)
+t.test(PC4~heart$target,data=hearttyp_pca)
+t.test(PC5~heart$target,data=hearttyp_pca)
+t.test(PC6~heart$target,data=hearttyp_pca)
+t.test(PC7~heart$target,data=hearttyp_pca)
+t.test(PC8~heart$target,data=hearttyp_pca)
+t.test(PC9~heart$target,data=hearttyp_pca)
+t.test(PC10~heart$target,data=hearttyp_pca)
+t.test(PC11~heart$target,data=hearttyp_pca)
+
+## F ratio tests
+var.test(PC1~heart$target,data=hearttyp_pca)
+var.test(PC2~heart$target,data=hearttyp_pca)
+var.test(PC3~heart$target,data=hearttyp_pca)
+var.test(PC4~heart$target,data=hearttyp_pca)
+var.test(PC5~heart$target,data=hearttyp_pca)
+var.test(PC6~heart$target,data=hearttyp_pca)
+var.test(PC7~heart$target,data=hearttyp_pca)
+var.test(PC8~heart$target,data=hearttyp_pca)
+var.test(PC9~heart$target,data=hearttyp_pca)
+var.test(PC10~heart$target,data=hearttyp_pca)
+var.test(PC11~heart$target,data=hearttyp_pca)
+
+# Levene's tests (one-sided)
+library(car)
+(LTPC1 <- leveneTest(PC1~heart$target,data=hearttyp_pca))
+(p_PC1_1sided <- LTPC1[[3]][1]/2)
+(LTPC2 <- leveneTest(PC2~heart$target,data=hearttyp_pca))
+(p_PC2_1sided=LTPC2[[3]][1]/2)
+(LTPC3 <- leveneTest(PC3~heart$target,data=hearttyp_pca))
+(p_PC3_1sided <- LTPC3[[3]][1]/2)
+(LTPC4 <- leveneTest(PC4~heart$target,data=hearttyp_pca))
+(p_PC4_1sided <- LTPC4[[3]][1]/2)
+(LTPC5 <- leveneTest(PC5~heart$target,data=hearttyp_pca))
+(p_PC5_1sided <- LTPC5[[3]][1]/2)
+(LTPC6 <- leveneTest(PC6~heart$target,data=hearttyp_pca))
+(p_PC6_1sided <- LTPC6[[3]][1]/2)
+(LTPC7 <- leveneTest(PC7~heart$target,data=hearttyp_pca))
+(p_PC7_1sided <- LTPC7[[3]][1]/2)
+(LTPC8 <- leveneTest(PC8~heart$target,data=hearttyp_pca))
+(p_PC8_1sided <- LTPC8[[3]][1]/2)
+(LTPC9 <- leveneTest(PC9~heart$target,data=hearttyp_pca))
+(p_PC9_1sided <- LTPC9[[3]][1]/2)
+(LTPC10 <- leveneTest(PC10~heart$target,data=hearttyp_pca))
+(p_PC10_1sided <- LTPC10[[3]][1]/2)
+(LTPC11 <- leveneTest(PC11~heart$target,data=hearttyp_pca))
+(p_PC11_1sided <- LTPC11[[3]][1]/2)
+
+# Plotting the scores for the first and second components
+plot(hearttyp_pca$PC1, hearttyp_pca$PC2,pch=ifelse(hearttyp_pca$target == 0,1,16),xlab="PC1", ylab="PC2", main="1,025 people against values for PC1 & PC2")
+abline(h=0)
+abline(v=0)
+legend("bottomleft", legend=c("No desease","Desease"), pch=c(1,16))
+plot(eigen_heart, xlab = "Component number", ylab = "Component variance", type = "l", main = "Scree diagram")
+plot(log(eigen_heart), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+print(summary(heart_pca))
+
+
+diag(cov(heart_pca$x))
+xlim <- range(heart_pca$x[,1])
+head(heart_pca$x[,1])
+head(heart_pca$x)
+plot(heart_pca$x,xlim=xlim,ylim=xlim)
+heart_pca$rotation[,1]
+heart_pca$rotation
+plot(heart[,-1])
+head(heart_pca$x)
+plot(heart_pca)
+
+#get the original value of the data based on PCA
+center <- heart_pca$center
+scale <- heart_pca$scale
+new_heart <- as.matrix(heart_x)
+head(new_heart)
+
+drop(scale(new_heart,center=center, scale=scale)%*%heart_pca$rotation[,1])
+predict(heart_pca)[,1]
+
+#The above two gives us the same thing. predict is a good function to know.
+heart$target <- as.factor(heart$target)
+out <- sapply(1:12, function(i){plot(heart$target,heart_pca$x[,i],xlab=paste("PC",i,sep=""),ylab="Disease or No disease")})
+# pairs(heart_pca$x[,1:12], ylim = c(-6,4),xlim = c(-6,4),panel=function(x,y,...){text(x,y,heart$target)})
+
+
+# Better Ways to Visualize
+
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+
+# Correlation
+pairs.panels(heart[,-13],
+             gap = 0,
+             bg = c("red", "blue")[heart$target],
+             pch=21)
+
+pairs.panels(heart_pca$x,
+             gap=0,
+             bg = c("red", "blue")[heart$target],
+             pch=21)
+
+
+
+
+fviz_eig(heart_pca, addlabels = TRUE)
+fviz_pca_var(heart_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+fviz_pca_ind(heart_pca, col.ind = "cos2", 
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"), 
+             repel = TRUE)
+biplot(heart_pca)
+autoplot(heart_pca,
+         data = heart[,-13],
+         loadings = TRUE,
+         labels = heart$target)
+
+
+
+# heart[heart$sex=="male", 'sex'] <- '1'
+# heart[heart$sex=="female", 'sex'] <- '0'
+# heart$sex <- as.numeric(heart$sex)
+# heart$sex
+# Different PCA Method. 
+res.pca <- PCA(heart[,1:13], graph = FALSE)
+print(res.pca)
+
+# Visualize and Interpret PCA using these functions 
+
+#get_eigenvalue(res.pca): Extract the eigenvalues/variances of principal components
+#fviz_eig(res.pca): Visualize the eigenvalues
+#get_pca_ind(res.pca), get_pca_var(res.pca): Extract the results for individuals and variables, respectively.
+#fviz_pca_ind(res.pca), fviz_pca_var(res.pca): Visualize the results individuals and variables, respectively.
+#fviz_pca_biplot(res.pca): Make a biplot of individuals and variables.
+
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+
+var <- get_pca_var(res.pca)
+#var$coord: coordinates of variables to create a scatter plot
+#var$cos2: represents the quality of representation for variables on the factor map. It’s calculated as the squared coordinates: var.cos2 = var.coord * var.coord.
+#var$contrib: contains the contributions (in percentage) of the variables to the principal components. 
+#The contribution of a variable (var) to a given principal component is (in percentage) : (var.cos2 * 100) / (total cos2 of the component).
+var
+
+# Coordinates
+head(var$coord)
+# Cos2: quality on the factore map
+head(var$cos2)
+# Contributions to the principal components
+head(var$contrib)
+
+#The plot Below is also known as variable correlation plots. It shows the relationships between all variables. It can be interpreted as follow:
+
+#Positively correlated variables are grouped together.
+#Negatively correlated variables are positioned on opposite sides of the plot origin (opposed quadrants).
+#The distance between variables and the origin measures the quality of the variables on the factor map. 
+#Variables that are away from the origin are well represented on the factor map.
+
+# Correlation circle
+fviz_pca_var(res.pca, col.var = "black")
+
+# Quality of representation
+
+
+corrplot(var$cos2, is.corr=FALSE)
+# Total cos2 of variables on Dim.1 and Dim.2
+#A high cos2 indicates a good representation of the variable on the principal component. 
+#In this case the variable is positioned close to the circumference of the correlation circle.
+#A low cos2 indicates that the variable is not perfectly represented by the PCs. 
+#In this case the variable is close to the center of the circle.
+
+fviz_cos2(res.pca, choice = "var", axes = 1:2)
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE # Avoid text overlapping
+)
+# Change the transparency by cos2 values
+fviz_pca_var(res.pca, alpha.var = "cos2")
+corrplot(var$contrib, is.corr=FALSE)
+# Contributions of variables to PC1
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+# Contributions of variables to PC2
+fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+fviz_pca_var(res.pca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+)
+fviz_pca_var(res.pca, alpha.var = "contrib")
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = heart$target, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+
+# Description of PC
+
+res.desc <- dimdesc(res.pca, axes = c(1,2,3,4,5), proba = 0.05)
+# Description of dimension 1
+res.desc$Dim.1
+res.desc$Dim.2
+res.desc$Dim.3
+res.desc$Dim.4
+res.desc$Dim.5
+
+# Graph of Indiviuals
+ind <- get_pca_ind(res.pca)
+ind
+
+## Principal Component Analysis Results for individuals
+##  ===================================================
+##   Name       Description                       
+## 1 "$coord"   "Coordinates for the individuals" 
+## 2 "$cos2"    "Cos2 for the individuals"        
+## 3 "$contrib" "contributions of the individuals"
+#To get access to the different components, use this:
+
+# Coordinates of individuals
+head(ind$coord)
+# Quality of individuals
+head(ind$cos2)
+# Contributions of individuals
+head(ind$contrib)
+
+fviz_pca_ind(res.pca)
+
+fviz_pca_ind(res.pca, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+)
+fviz_pca_ind(res.pca, pointsize = "cos2", 
+             pointshape = 21, fill = "#E7B800",
+             repel = TRUE # Avoid text overlapping (slow if many points)
+)
+
+fviz_pca_ind(res.pca, col.ind = "cos2", pointsize = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+)
+fviz_cos2(res.pca, choice = "ind")
+
+# Total contribution on PC1 and PC2
+fviz_contrib(res.pca, choice = "ind", axes = 1:2)
+
+# Create a random continuous variable of length 23,
+# Same length as the number of active individuals in the PCA
+set.seed(123)
+my.cont.var <- rnorm(1025)
+# Color individuals by the continuous variable
+fviz_pca_ind(res.pca, col.ind = my.cont.var,
+             gradient.cols = c("blue", "yellow", "red"),
+             legend.title = "Cont.Var")
+
+heart$target <- as.factor(heart$target)
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = heart$target, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+)
+
+fviz_pca_ind(res.pca, geom.ind = "point", col.ind = heart$target, 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence",
+             legend.title = "Groups"
+)
+fviz_pca_ind(res.pca,
+             label = "none", # hide individual labels
+             habillage = heart$target, # color by groups
+             addEllipses = TRUE, # Concentration ellipses
+             palette = "jco"
+)
+fviz_pca_var(res.pca, geom.var = c("point", "text"))
+# Show individuals text labels only
+fviz_pca_ind(res.pca, geom.ind =  "text")
+# Change the size of arrows an labels
+fviz_pca_var(res.pca, arrowsize = 1, labelsize = 5, 
+             repel = TRUE)
+# Change points size, shape and fill color
+# Change labelsize
+fviz_pca_ind(res.pca, 
+             pointsize = 3, pointshape = 21, fill = "lightblue",
+             labelsize = 5, repel = TRUE)
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = heart$target, # color by groups
+             legend.title = "Groups",
+             mean.point = FALSE)
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = heart$target, # color by groups
+             legend.title = "Groups",
+             mean.point = TRUE)
+fviz_pca_var(res.pca, axes.linetype = "blank")
+
+
+
+ind.p <- fviz_pca_ind(res.pca, geom = "point", col.ind = heart$target)
+ggpubr::ggpar(ind.p,
+              title = "Principal Component Analysis",
+              subtitle = "Heart disease data",
+              caption = "Source: factoextra",
+              xlab = "PC1", ylab = "PC2",
+              legend.title = "Disease or No Disease", legend.position = "top",
+              ggtheme = theme_gray(), palette = "jco"
+)
+
+fviz_pca_biplot(res.pca, repel = TRUE,col.ind = heart$target,
+                col.var = "#2E9FDF", # Variables color
+)
+
+fviz_pca_biplot(res.pca, 
+                col.ind = heart$target, palette = "jco", 
+                addEllipses = TRUE, label = "var",
+                col.var = "black", repel = TRUE,
+                legend.title = "Target") 
+
+fviz_pca_biplot(res.pca, 
+                # Fill individuals by groups
+                geom.ind = "point",
+                pointshape = 21,
+                pointsize = 2.5,
+                fill.ind = heart$target,
+                col.ind = "black",
+                # Color variable by groups
+                legend.title = list(fill = "Target", color = "Clusters"),
+                repel = TRUE        # Avoid label overplotting
+)+
+  ggpubr::fill_palette("jco")+      # Indiviual fill color
+  ggpubr::color_palette("npg")      # Variable colors
+
+fviz_pca_biplot(res.pca, 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = heart$target, col.ind = "black",
+                pointshape = 21, pointsize = 2,
+                palette = "jco",
+                addEllipses = TRUE,
+                # Variables
+                alpha.var ="contrib", col.var = "contrib",
+                gradient.cols = "RdYlBu",
+                
+                legend.title = list(fill = "Survivorship", color = "Contrib",
+                                    alpha = "Contrib")
+)
+
+
+# })
+
+
+```
